@@ -1,0 +1,55 @@
+const express = require('express');
+const router = express.Router();
+
+const adminController = require('../controllers/adminController');
+const { authenticateToken } = require('../middleware/authMiddleware');
+const { requireAdmin, requireSuperAdmin, logAdminAction } = require('../middleware/adminMiddleware');
+const { validateAdminRegistration } = require('../middleware/validation');
+
+/**
+ * Admin Routes
+ * Base path: /api/admin
+ */
+
+// Admin routes (require authentication and admin role)
+router.get('/dashboard', 
+  authenticateToken, 
+  requireAdmin, 
+  adminController.getDashboardStats
+);
+
+router.post('/cache/clear', 
+  authenticateToken, 
+  requireAdmin, 
+  logAdminAction('clear_cache', 'system'),
+  adminController.clearSearchCache
+);
+
+router.get('/cache/stats', 
+  authenticateToken, 
+  requireAdmin, 
+  adminController.getSearchCacheStats
+);
+
+router.get('/health/database', 
+  authenticateToken, 
+  requireAdmin, 
+  adminController.testDatabaseHealth
+);
+
+// Super Admin routes (require super admin role)
+router.post('/admins', 
+  authenticateToken, 
+  requireSuperAdmin, 
+  validateAdminRegistration, 
+  logAdminAction('create_admin', 'admin'),
+  adminController.createAdmin
+);
+
+router.get('/system/info', 
+  authenticateToken, 
+  requireSuperAdmin, 
+  adminController.getSystemInfo
+);
+
+module.exports = router;
