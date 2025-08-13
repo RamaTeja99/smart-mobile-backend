@@ -7,7 +7,8 @@ const logger = require('../utils/logger');
  */
 const authenticateToken = async (req, res, next) => {
   try {
-    const token = authConfig.extractTokenFromHeader(req);
+    // ✅ Pass the Authorization header string (not req object)
+    const token = authConfig.extractTokenFromHeader(req.headers.authorization);
 
     if (!token) {
       return res.status(401).json({
@@ -17,7 +18,7 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Verify the token
-    const decoded = authConfig.verifyToken(token);
+    const decoded = authConfig.verifyAccessToken(token);
 
     // Get admin user from database to verify token is still valid
     const supabase = getSupabaseAdmin();
@@ -53,8 +54,8 @@ const authenticateToken = async (req, res, next) => {
 
     next();
   } catch (error) {
-    logger.warn('Authentication failed', { 
-      error: error.message, 
+    logger.warn('Authentication failed', {
+      error: error.message,
       ip: req.ip,
       userAgent: req.get('User-Agent')
     });
@@ -79,10 +80,11 @@ const authenticateToken = async (req, res, next) => {
  */
 const optionalAuthentication = async (req, res, next) => {
   try {
-    const token = authConfig.extractTokenFromHeader(req);
+    // ✅ Pass header string instead of req object
+    const token = authConfig.extractTokenFromHeader(req.headers.authorization);
 
     if (token) {
-      const decoded = authConfig.verifyToken(token);
+      const decoded = authConfig.verifyAccessToken(token);
 
       const supabase = getSupabaseAdmin();
       const { data: admin } = await supabase
@@ -104,7 +106,7 @@ const optionalAuthentication = async (req, res, next) => {
 
     next();
   } catch (error) {
-    // Continue without authentication for optional middleware
+    // For optional auth, just continue if verification fails
     next();
   }
 };

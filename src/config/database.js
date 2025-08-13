@@ -63,7 +63,7 @@ const connectDatabase = async () => {
 
     // Test connection by querying a simple table or creating one if it doesn't exist
     const { data, error } = await client
-      .from('health_check')
+      .from('admins')
       .select('*')
       .limit(1);
 
