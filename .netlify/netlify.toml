@@ -1,0 +1,30 @@
+plugins = []
+functionsDirectory = "C:\\Users\\Rama Teja\\Dropbox\\PC\\Desktop\\smart mobile\\backend\\smart-mobile-backend\\functions"
+functionsDirectoryOrigin = "config-v1"
+headers = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "C:\\Users\\Rama Teja\\Dropbox\\PC\\Desktop\\smart mobile\\backend\\smart-mobile-backend\\build"
+publishOrigin = "ui"
+commandOrigin = "ui"
+command = "npm run build"
+functions = "C:\\Users\\Rama Teja\\Dropbox\\PC\\Desktop\\smart mobile\\backend\\smart-mobile-backend\\functions"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
