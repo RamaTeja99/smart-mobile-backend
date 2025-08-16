@@ -20,9 +20,10 @@ class ProductController {
         sortOrder: req.query.sort_order || 'desc',
         brand_id: req.query.brand_id,
         category_id: req.query.category_id,
-        is_featured: req.query.is_featured ? req.query.is_featured === 'true' : undefined,
-        is_bestseller: req.query.is_bestseller ? req.query.is_bestseller === 'true' : undefined,
-        in_stock: req.query.in_stock ? req.query.in_stock === 'true' : undefined
+        is_featured: req.query.is_featured !== undefined ? req.query.is_featured === 'true' : undefined,
+        is_bestseller: req.query.is_bestseller !== undefined ? req.query.is_bestseller === 'true' : undefined,
+        in_stock: req.query.in_stock !== undefined ? req.query.in_stock === 'true' : undefined,
+
       };
 
       const result = await productService.getProducts(options);
@@ -53,6 +54,41 @@ class ProductController {
       });
     }
   }
+    /**
+   * Get all products without filters
+   * GET /api/products/all
+   */
+  async getAllProducts(req, res) {
+    try {
+      // optional: allow a limit, with a hard cap
+      const limit = Math.min(parseInt(req.query.limit) || 1000, 5000); 
+
+      const result = await productService.getAllProducts(limit);
+
+      if (!result.success) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Failed to fetch all products'
+        });
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        data: result.data,
+        total: result.data.length,
+        message: `Retrieved ${result.data.length} products`
+      });
+    } catch (error) {
+      logger.error('ProductController.getAllProducts error', {
+        error: error.message
+      });
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to fetch all products'
+      });
+    }
+  }
+
 
   /**
    * Search products using advanced search algorithm

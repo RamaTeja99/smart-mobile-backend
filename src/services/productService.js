@@ -71,6 +71,37 @@ class ProductService {
       throw error;
     }
   }
+    /**
+   * Get ALL products (no filters, no search)
+   */
+  async getAllProducts(limit = 1000) {
+    try {
+      const pagination = {
+        page: 1,
+        limit,
+        sortBy: 'created_at',
+        sortOrder: 'desc'
+      };
+
+      // empty filters = everything
+      const result = await supabaseService.getProducts({}, pagination);
+
+      if (!result.success) {
+        throw new Error('Failed to fetch all products');
+      }
+
+      const processedProducts = result.data.map(p => this.processProductForDisplay(p));
+
+      return {
+        success: true,
+        data: processedProducts
+      };
+    } catch (error) {
+      logger.error('ProductService.getAllProducts error', { error: error.message });
+      return { success: false, message: error.message };
+    }
+  }
+
 
   /**
    * Get featured products

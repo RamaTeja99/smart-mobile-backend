@@ -18,6 +18,7 @@ const {
 
 // Public routes (no authentication required)
 router.get('/', validatePagination, productController.getProducts);
+router.get('/all', productController.getAllProducts);
 router.get('/search', validateProductSearch, productController.searchProducts);
 router.get('/search/suggestions', productController.getSearchSuggestions);
 router.get('/search/popular', productController.getPopularSearches);
