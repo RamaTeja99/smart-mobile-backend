@@ -10,7 +10,28 @@ class SupabaseService {
     this.client = getSupabaseClient();
     this.adminClient = getSupabaseAdmin();
   }
+  async createFeedback(feedbackData) {
+    return await this.executeOperation(async () => {
+      feedbackData.created_at = new Date().toISOString();
+      return await this.client // can use adminClient if you want only admin access
+        .from('feedback')
+        .insert([feedbackData])
+        .select()
+        .single();
+    }, 'createFeedback');
+  }
 
+  // Fetch all feedback (optionally paginated)
+  async getFeedbackList({ page = 1, limit = 50 } = {}) {
+    const offset = (page - 1) * limit;
+    return await this.executeOperation(async () => {
+      return await this.client
+        .from('feedback')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+    }, 'getFeedbackList');
+  }
   /**
    * Execute database operation with error handling and logging
    * @param {Function} operation - Database operation function
@@ -188,6 +209,7 @@ class SupabaseService {
       return await dbQuery.order('created_at', { ascending: false });
     }, 'searchProducts');
   }
+  
 
   // ===============================
   // CATEGORY OPERATIONS

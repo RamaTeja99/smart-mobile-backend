@@ -17,6 +17,7 @@ router.get('/dashboard',
   requireAdmin, 
   adminController.getDashboardStats
 );
+  router.get('/feedback', authenticateToken, requireAdmin, adminController.getAllFeedback); 
 
 router.post('/cache/clear', 
   authenticateToken, 

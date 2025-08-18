@@ -88,6 +88,19 @@ CREATE TABLE IF NOT EXISTS products (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS feedback (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name VARCHAR(100),
+  email VARCHAR(255),
+  phone VARCHAR(20),
+  subject VARCHAR(200),
+  message TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at);
+
+
 -- Admins table for authentication
 CREATE TABLE IF NOT EXISTS admins (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,

@@ -8,6 +8,36 @@ const logger = require('../utils/logger');
  * Handles admin-specific operations and dashboard functionality
  */
 class AdminController {
+   async submitFeedback(req, res) {
+    try {
+      const data = req.body;
+      if (!data.message) {
+        return res.status(400).json({ status: 'error', message: 'Message is required' });
+      }
+      const result = await supabaseService.createFeedback(data);
+      if (!result.success) {
+        return res.status(500).json({ status: 'error', message: 'Failed to save feedback' });
+      }
+      res.status(201).json({ status: 'success', data: result.data, message: 'Feedback submitted' });
+    } catch (error) {
+      res.status(500).json({ status: 'error', message: 'Failed to submit feedback' });
+    }
+  }
+
+  // GET /api/admin/feedback (Admin only)
+  async getAllFeedback(req, res) {
+    try {
+      const page = parseInt(req.query.page || '1');
+      const limit = parseInt(req.query.limit || '50');
+      const result = await supabaseService.getFeedbackList({ page, limit });
+      if (!result.success) {
+        return res.status(500).json({ status: 'error', message: 'Failed to retrieve feedback' });
+      }
+      res.status(200).json({ status: 'success', data: result.data, message: 'Feedback list' });
+    } catch (error) {
+      res.status(500).json({ status: 'error', message: 'Failed to retrieve feedback' });
+    }
+  }
   /**
    * Get admin dashboard statistics
    * GET /api/admin/dashboard
