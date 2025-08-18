@@ -1,11 +1,39 @@
-const productService = require('../services/productService');
-const searchService = require('../services/searchService');
-const logger = require('../utils/logger');
+const productService = require("../services/productService");
+const searchService = require("../services/searchService");
+const logger = require("../utils/logger");
 
 /**
  * Product Controller
  * Handles all product-related HTTP requests
  */
+function normalizeSearchParams(query) {
+  return {
+    query: query.query || query.q || "",
+    brand: query.brand,
+    category: query.category,
+    minPrice:
+      query.minPrice !== undefined
+        ? parseFloat(query.minPrice)
+        : query.min_price !== undefined
+        ? parseFloat(query.min_price)
+        : 0,
+    maxPrice:
+      query.maxPrice !== undefined
+        ? parseFloat(query.maxPrice)
+        : query.max_price !== undefined && query.max_price !== ""
+        ? parseFloat(query.max_price)
+        : Infinity,
+    inStock:
+      query.inStock !== undefined
+        ? query.inStock === "true" || query.inStock === true
+        : query.in_stock === "true",
+    sortBy: query.sortBy || query.sort_by || "relevance",
+    sortOrder: query.sortOrder || query.sort_order || "desc",
+    limit:
+      query.limit !== undefined ? Math.min(parseInt(query.limit), 100) : 50,
+    offset: query.offset !== undefined ? parseInt(query.offset) : 0,
+  };
+}
 class ProductController {
   /**
    * Get all products with filtering and pagination
@@ -16,79 +44,85 @@ class ProductController {
       const options = {
         page: req.query.page || 1,
         limit: req.query.limit || 50,
-        sortBy: req.query.sort_by || 'created_at',
-        sortOrder: req.query.sort_order || 'desc',
+        sortBy: req.query.sort_by || "created_at",
+        sortOrder: req.query.sort_order || "desc",
         brand_id: req.query.brand_id,
         category_id: req.query.category_id,
-        is_featured: req.query.is_featured !== undefined ? req.query.is_featured === 'true' : undefined,
-        is_bestseller: req.query.is_bestseller !== undefined ? req.query.is_bestseller === 'true' : undefined,
-        in_stock: req.query.in_stock !== undefined ? req.query.in_stock === 'true' : undefined,
-
+        is_featured:
+          req.query.is_featured !== undefined
+            ? req.query.is_featured === "true"
+            : undefined,
+        is_bestseller:
+          req.query.is_bestseller !== undefined
+            ? req.query.is_bestseller === "true"
+            : undefined,
+        in_stock:
+          req.query.in_stock !== undefined
+            ? req.query.in_stock === "true"
+            : undefined,
       };
 
       const result = await productService.getProducts(options);
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to fetch products'
+          status: "error",
+          message: "Failed to fetch products",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
         pagination: result.pagination,
-        message: `Found ${result.data.length} products`
+        message: `Found ${result.data.length} products`,
       });
-
     } catch (error) {
-      logger.error('ProductController.getProducts error', { 
-        error: error.message, 
-        query: req.query 
+      logger.error("ProductController.getProducts error", {
+        error: error.message,
+        query: req.query,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch products'
+        status: "error",
+        message: "Failed to fetch products",
       });
     }
   }
-    /**
+  /**
    * Get all products without filters
    * GET /api/products/all
    */
   async getAllProducts(req, res) {
     try {
       // optional: allow a limit, with a hard cap
-      const limit = Math.min(parseInt(req.query.limit) || 1000, 5000); 
+      const limit = Math.min(parseInt(req.query.limit) || 1000, 5000);
 
       const result = await productService.getAllProducts(limit);
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to fetch all products'
+          status: "error",
+          message: "Failed to fetch all products",
         });
       }
 
       return res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
         total: result.data.length,
-        message: `Retrieved ${result.data.length} products`
+        message: `Retrieved ${result.data.length} products`,
       });
     } catch (error) {
-      logger.error('ProductController.getAllProducts error', {
-        error: error.message
+      logger.error("ProductController.getAllProducts error", {
+        error: error.message,
       });
       return res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch all products'
+        status: "error",
+        message: "Failed to fetch all products",
       });
     }
   }
-
 
   /**
    * Search products using advanced search algorithm
@@ -96,37 +130,24 @@ class ProductController {
    */
   async searchProducts(req, res) {
     try {
-      const searchParams = {
-        query: req.query.query || req.query.q,
-        brand: req.query.brand,
-        category: req.query.category,
-        minPrice: parseFloat(req.query.min_price) || 0,
-        maxPrice: req.query.max_price ? parseFloat(req.query.max_price) : undefined,
-        inStock: req.query.in_stock === 'true',
-        sortBy: req.query.sort_by || 'relevance',
-        sortOrder: req.query.sort_order || 'desc',
-        limit: Math.min(parseInt(req.query.limit) || 50, 100),
-        offset: parseInt(req.query.offset) || 0
-      };
-
+      const searchParams = normalizeSearchParams(req.query);
       const result = await searchService.searchProducts(searchParams);
-
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.results,
         metadata: result.metadata,
-        message: `Found ${result.metadata.total} products`
+        message: `Found ${result.metadata.total} products`,
       });
-
     } catch (error) {
-      logger.error('ProductController.searchProducts error', { 
-        error: error.message, 
-        searchParams: req.query 
+      logger.debug("Normalized searchParams", searchParams);
+      logger.error("ProductController.searchProducts error", {
+        error: error.message,
+        searchParams: req.query,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Search failed. Please try again.'
+        status: "error",
+        message: "Search failed. Please try again.",
       });
     }
   }
@@ -139,23 +160,25 @@ class ProductController {
     try {
       const { query, limit = 10 } = req.query;
 
-      const suggestions = await searchService.getSearchSuggestions(query, parseInt(limit));
+      const suggestions = await searchService.getSearchSuggestions(
+        query,
+        parseInt(limit)
+      );
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: suggestions,
-        message: `Found ${suggestions.length} suggestions`
+        message: `Found ${suggestions.length} suggestions`,
       });
-
     } catch (error) {
-      logger.error('ProductController.getSearchSuggestions error', { 
-        error: error.message, 
-        query: req.query.query 
+      logger.error("ProductController.getSearchSuggestions error", {
+        error: error.message,
+        query: req.query.query,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to get suggestions'
+        status: "error",
+        message: "Failed to get suggestions",
       });
     }
   }
@@ -170,17 +193,18 @@ class ProductController {
       const popularSearches = searchService.getPopularSearches(limit);
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: popularSearches,
-        message: `Found ${popularSearches.length} popular searches`
+        message: `Found ${popularSearches.length} popular searches`,
+      });
+    } catch (error) {
+      logger.error("ProductController.getPopularSearches error", {
+        error: error.message,
       });
 
-    } catch (error) {
-      logger.error('ProductController.getPopularSearches error', { error: error.message });
-
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to get popular searches'
+        status: "error",
+        message: "Failed to get popular searches",
       });
     }
   }
@@ -194,17 +218,18 @@ class ProductController {
       const filters = await searchService.getSearchFilters();
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: filters,
-        message: 'Search filters retrieved successfully'
+        message: "Search filters retrieved successfully",
+      });
+    } catch (error) {
+      logger.error("ProductController.getSearchFilters error", {
+        error: error.message,
       });
 
-    } catch (error) {
-      logger.error('ProductController.getSearchFilters error', { error: error.message });
-
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to get search filters'
+        status: "error",
+        message: "Failed to get search filters",
       });
     }
   }
@@ -220,23 +245,24 @@ class ProductController {
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to fetch featured products'
+          status: "error",
+          message: "Failed to fetch featured products",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: `Found ${result.data.length} featured products`
+        message: `Found ${result.data.length} featured products`,
+      });
+    } catch (error) {
+      logger.error("ProductController.getFeaturedProducts error", {
+        error: error.message,
       });
 
-    } catch (error) {
-      logger.error('ProductController.getFeaturedProducts error', { error: error.message });
-
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch featured products'
+        status: "error",
+        message: "Failed to fetch featured products",
       });
     }
   }
@@ -252,23 +278,24 @@ class ProductController {
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to fetch bestseller products'
+          status: "error",
+          message: "Failed to fetch bestseller products",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: `Found ${result.data.length} bestseller products`
+        message: `Found ${result.data.length} bestseller products`,
+      });
+    } catch (error) {
+      logger.error("ProductController.getBestsellerProducts error", {
+        error: error.message,
       });
 
-    } catch (error) {
-      logger.error('ProductController.getBestsellerProducts error', { error: error.message });
-
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch bestseller products'
+        status: "error",
+        message: "Failed to fetch bestseller products",
       });
     }
   }
@@ -284,23 +311,24 @@ class ProductController {
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to fetch new products'
+          status: "error",
+          message: "Failed to fetch new products",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: `Found ${result.data.length} new products`
+        message: `Found ${result.data.length} new products`,
+      });
+    } catch (error) {
+      logger.error("ProductController.getNewProducts error", {
+        error: error.message,
       });
 
-    } catch (error) {
-      logger.error('ProductController.getNewProducts error', { error: error.message });
-
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch new products'
+        status: "error",
+        message: "Failed to fetch new products",
       });
     }
   }
@@ -316,26 +344,25 @@ class ProductController {
 
       if (!result.success) {
         return res.status(404).json({
-          status: 'error',
-          message: result.message || 'Product not found'
+          status: "error",
+          message: result.message || "Product not found",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: 'Product retrieved successfully'
+        message: "Product retrieved successfully",
       });
-
     } catch (error) {
-      logger.error('ProductController.getProductById error', { 
-        error: error.message, 
-        productId: req.params.id 
+      logger.error("ProductController.getProductById error", {
+        error: error.message,
+        productId: req.params.id,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch product'
+        status: "error",
+        message: "Failed to fetch product",
       });
     }
   }
@@ -350,35 +377,37 @@ class ProductController {
       const options = {
         page: req.query.page || 1,
         limit: req.query.limit || 50,
-        sortBy: req.query.sort_by || 'created_at',
-        sortOrder: req.query.sort_order || 'desc'
+        sortBy: req.query.sort_by || "created_at",
+        sortOrder: req.query.sort_order || "desc",
       };
 
-      const result = await productService.getProductsByCategory(categoryId, options);
+      const result = await productService.getProductsByCategory(
+        categoryId,
+        options
+      );
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to fetch products'
+          status: "error",
+          message: "Failed to fetch products",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
         pagination: result.pagination,
-        message: `Found ${result.data.length} products in category`
+        message: `Found ${result.data.length} products in category`,
       });
-
     } catch (error) {
-      logger.error('ProductController.getProductsByCategory error', { 
-        error: error.message, 
-        categoryId: req.params.categoryId 
+      logger.error("ProductController.getProductsByCategory error", {
+        error: error.message,
+        categoryId: req.params.categoryId,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch products'
+        status: "error",
+        message: "Failed to fetch products",
       });
     }
   }
@@ -393,35 +422,34 @@ class ProductController {
       const options = {
         page: req.query.page || 1,
         limit: req.query.limit || 50,
-        sortBy: req.query.sort_by || 'created_at',
-        sortOrder: req.query.sort_order || 'desc'
+        sortBy: req.query.sort_by || "created_at",
+        sortOrder: req.query.sort_order || "desc",
       };
 
       const result = await productService.getProductsByBrand(brandId, options);
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to fetch products'
+          status: "error",
+          message: "Failed to fetch products",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
         pagination: result.pagination,
-        message: `Found ${result.data.length} products by brand`
+        message: `Found ${result.data.length} products by brand`,
       });
-
     } catch (error) {
-      logger.error('ProductController.getProductsByBrand error', { 
-        error: error.message, 
-        brandId: req.params.brandId 
+      logger.error("ProductController.getProductsByBrand error", {
+        error: error.message,
+        brandId: req.params.brandId,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch products'
+        status: "error",
+        message: "Failed to fetch products",
       });
     }
   }
@@ -441,32 +469,31 @@ class ProductController {
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: result.message || 'Failed to create product'
+          status: "error",
+          message: result.message || "Failed to create product",
         });
       }
 
-      logger.info('Product created via API', { 
-        productId: result.data.id, 
-        adminId: req.user.id 
+      logger.info("Product created via API", {
+        productId: result.data.id,
+        adminId: req.user.id,
       });
 
       res.status(201).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: result.message
+        message: result.message,
       });
-
     } catch (error) {
-      logger.error('ProductController.createProduct error', { 
-        error: error.message, 
+      logger.error("ProductController.createProduct error", {
+        error: error.message,
         productData: req.body,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to create product'
+        status: "error",
+        message: "Failed to create product",
       });
     }
   }
@@ -483,34 +510,35 @@ class ProductController {
       const result = await productService.updateProduct(id, updateData);
 
       if (!result.success) {
-        return res.status(result.message === 'Product not found' ? 404 : 400).json({
-          status: 'error',
-          message: result.message || 'Failed to update product'
-        });
+        return res
+          .status(result.message === "Product not found" ? 404 : 400)
+          .json({
+            status: "error",
+            message: result.message || "Failed to update product",
+          });
       }
 
-      logger.info('Product updated via API', { 
-        productId: id, 
-        adminId: req.user.id 
+      logger.info("Product updated via API", {
+        productId: id,
+        adminId: req.user.id,
       });
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: result.message
+        message: result.message,
       });
-
     } catch (error) {
-      logger.error('ProductController.updateProduct error', { 
-        error: error.message, 
+      logger.error("ProductController.updateProduct error", {
+        error: error.message,
         productId: req.params.id,
         updateData: req.body,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to update product'
+        status: "error",
+        message: "Failed to update product",
       });
     }
   }
@@ -525,32 +553,33 @@ class ProductController {
       const result = await productService.deleteProduct(id);
 
       if (!result.success) {
-        return res.status(result.message === 'Product not found' ? 404 : 400).json({
-          status: 'error',
-          message: result.message || 'Failed to delete product'
-        });
+        return res
+          .status(result.message === "Product not found" ? 404 : 400)
+          .json({
+            status: "error",
+            message: result.message || "Failed to delete product",
+          });
       }
 
-      logger.info('Product deleted via API', { 
-        productId: id, 
-        adminId: req.user.id 
+      logger.info("Product deleted via API", {
+        productId: id,
+        adminId: req.user.id,
       });
 
       res.status(200).json({
-        status: 'success',
-        message: result.message
+        status: "success",
+        message: result.message,
       });
-
     } catch (error) {
-      logger.error('ProductController.deleteProduct error', { 
-        error: error.message, 
+      logger.error("ProductController.deleteProduct error", {
+        error: error.message,
         productId: req.params.id,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to delete product'
+        status: "error",
+        message: "Failed to delete product",
       });
     }
   }
@@ -566,43 +595,47 @@ class ProductController {
 
       if (stock_quantity === undefined || stock_quantity === null) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Stock quantity is required'
+          status: "error",
+          message: "Stock quantity is required",
         });
       }
 
-      const result = await productService.updateProductStock(id, stock_quantity);
+      const result = await productService.updateProductStock(
+        id,
+        stock_quantity
+      );
 
       if (!result.success) {
-        return res.status(result.message === 'Product not found' ? 404 : 400).json({
-          status: 'error',
-          message: result.message || 'Failed to update stock'
-        });
+        return res
+          .status(result.message === "Product not found" ? 404 : 400)
+          .json({
+            status: "error",
+            message: result.message || "Failed to update stock",
+          });
       }
 
-      logger.info('Product stock updated via API', { 
-        productId: id, 
+      logger.info("Product stock updated via API", {
+        productId: id,
         newStock: stock_quantity,
-        adminId: req.user.id 
+        adminId: req.user.id,
       });
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: 'Stock updated successfully'
+        message: "Stock updated successfully",
       });
-
     } catch (error) {
-      logger.error('ProductController.updateProductStock error', { 
-        error: error.message, 
+      logger.error("ProductController.updateProductStock error", {
+        error: error.message,
         productId: req.params.id,
         stock_quantity: req.body.stock_quantity,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to update stock'
+        status: "error",
+        message: "Failed to update stock",
       });
     }
   }
@@ -617,26 +650,25 @@ class ProductController {
 
       if (!result.success) {
         return res.status(500).json({
-          status: 'error',
-          message: 'Failed to fetch statistics'
+          status: "error",
+          message: "Failed to fetch statistics",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: 'Statistics retrieved successfully'
+        message: "Statistics retrieved successfully",
       });
-
     } catch (error) {
-      logger.error('ProductController.getProductStatistics error', { 
+      logger.error("ProductController.getProductStatistics error", {
         error: error.message,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
 
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch statistics'
+        status: "error",
+        message: "Failed to fetch statistics",
       });
     }
   }

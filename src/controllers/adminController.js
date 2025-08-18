@@ -1,43 +1,140 @@
-const supabaseService = require('../services/supabaseService');
-const authConfig = require('../config/auth');
-const searchService = require('../services/searchService');
-const logger = require('../utils/logger');
+const supabaseService = require("../services/supabaseService");
+const authConfig = require("../config/auth");
+const searchService = require("../services/searchService");
+const logger = require("../utils/logger");
 
 /**
  * Admin Controller
  * Handles admin-specific operations and dashboard functionality
  */
 class AdminController {
-   async submitFeedback(req, res) {
+  async submitFeedback(req, res) {
     try {
       const data = req.body;
       if (!data.message) {
-        return res.status(400).json({ status: 'error', message: 'Message is required' });
+        return res
+          .status(400)
+          .json({ status: "error", message: "Message is required" });
       }
       const result = await supabaseService.createFeedback(data);
       if (!result.success) {
-        return res.status(500).json({ status: 'error', message: 'Failed to save feedback' });
+        return res
+          .status(500)
+          .json({ status: "error", message: "Failed to save feedback" });
       }
-      res.status(201).json({ status: 'success', data: result.data, message: 'Feedback submitted' });
+      res
+        .status(201)
+        .json({
+          status: "success",
+          data: result.data,
+          message: "Feedback submitted",
+        });
     } catch (error) {
-      res.status(500).json({ status: 'error', message: 'Failed to submit feedback' });
+      res
+        .status(500)
+        .json({ status: "error", message: "Failed to submit feedback" });
     }
   }
 
   // GET /api/admin/feedback (Admin only)
   async getAllFeedback(req, res) {
     try {
-      const page = parseInt(req.query.page || '1');
-      const limit = parseInt(req.query.limit || '50');
+      const page = parseInt(req.query.page || "1");
+      const limit = parseInt(req.query.limit || "50");
       const result = await supabaseService.getFeedbackList({ page, limit });
       if (!result.success) {
-        return res.status(500).json({ status: 'error', message: 'Failed to retrieve feedback' });
+        return res
+          .status(500)
+          .json({ status: "error", message: "Failed to retrieve feedback" });
       }
-      res.status(200).json({ status: 'success', data: result.data, message: 'Feedback list' });
+      res
+        .status(200)
+        .json({
+          status: "success",
+          data: result.data,
+          message: "Feedback list",
+        });
     } catch (error) {
-      res.status(500).json({ status: 'error', message: 'Failed to retrieve feedback' });
+      res
+        .status(500)
+        .json({ status: "error", message: "Failed to retrieve feedback" });
     }
   }
+  // GET /api/admin/feedback/:id (Admin only)
+  async getFeedbackById(req, res) {
+    try {
+      const id = req.params.id;
+      const result = await supabaseService.getFeedbackById(id);
+
+      if (!result.success) {
+        return res
+          .status(404)
+          .json({ status: "error", message: "Feedback not found" });
+      }
+
+      res
+        .status(200)
+        .json({
+          status: "success",
+          data: result.data,
+          message: "Feedback retrieved",
+        });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ status: "error", message: "Failed to fetch feedback" });
+    }
+  }
+
+  // PUT /api/admin/feedback/:id
+  async updateFeedback(req, res) {
+    try {
+      const id = req.params.id;
+      const updateData = req.body;
+      const result = await supabaseService.updateFeedback(id, updateData);
+
+      if (!result.success) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "Failed to update feedback" });
+      }
+
+      res
+        .status(200)
+        .json({
+          status: "success",
+          data: result.data,
+          message: "Feedback updated",
+        });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ status: "error", message: "Failed to update feedback" });
+    }
+  }
+
+  // DELETE /api/admin/feedback/:id
+  async deleteFeedback(req, res) {
+    try {
+      const id = req.params.id;
+      const result = await supabaseService.deleteFeedback(id);
+
+      if (!result.success) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "Failed to delete feedback" });
+      }
+
+      res
+        .status(200)
+        .json({ status: "success", message: "Feedback deleted successfully" });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ status: "error", message: "Failed to delete feedback" });
+    }
+  }
+
   /**
    * Get admin dashboard statistics
    * GET /api/admin/dashboard
@@ -48,8 +145,8 @@ class AdminController {
 
       if (!stats.success) {
         return res.status(500).json({
-          status: 'error',
-          message: 'Failed to fetch dashboard statistics'
+          status: "error",
+          message: "Failed to fetch dashboard statistics",
         });
       }
 
@@ -61,23 +158,22 @@ class AdminController {
         ...stats.data,
         cache_stats: cacheStats,
         popular_searches: popularSearches,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
       };
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: dashboardData,
-        message: 'Dashboard statistics retrieved successfully'
+        message: "Dashboard statistics retrieved successfully",
       });
-
     } catch (error) {
-      logger.error('AdminController.getDashboardStats error', { 
+      logger.error("AdminController.getDashboardStats error", {
         error: error.message,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to fetch dashboard statistics'
+        status: "error",
+        message: "Failed to fetch dashboard statistics",
       });
     }
   }
@@ -95,14 +191,14 @@ class AdminController {
 
       // Set default role if not provided
       if (!adminData.role) {
-        adminData.role = 'admin';
+        adminData.role = "admin";
       }
 
       // Ensure only super admin can create other super admins
-      if (adminData.role === 'super_admin' && req.user.role !== 'super_admin') {
+      if (adminData.role === "super_admin" && req.user.role !== "super_admin") {
         return res.status(403).json({
-          status: 'error',
-          message: 'Only super admin can create super admin accounts'
+          status: "error",
+          message: "Only super admin can create super admin accounts",
         });
       }
 
@@ -110,34 +206,33 @@ class AdminController {
 
       if (!result.success) {
         return res.status(400).json({
-          status: 'error',
-          message: 'Failed to create admin'
+          status: "error",
+          message: "Failed to create admin",
         });
       }
 
       // Remove password from response
       delete result.data.password;
 
-      logger.info('Admin created', { 
+      logger.info("Admin created", {
         newAdminId: result.data.id,
-        createdByAdminId: req.user.id 
+        createdByAdminId: req.user.id,
       });
 
       res.status(201).json({
-        status: 'success',
+        status: "success",
         data: result.data,
-        message: 'Admin created successfully'
+        message: "Admin created successfully",
       });
-
     } catch (error) {
-      logger.error('AdminController.createAdmin error', { 
-        error: error.message, 
-        adminData: { ...req.body, password: '[HIDDEN]' },
-        createdByAdminId: req.user?.id
+      logger.error("AdminController.createAdmin error", {
+        error: error.message,
+        adminData: { ...req.body, password: "[HIDDEN]" },
+        createdByAdminId: req.user?.id,
       });
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to create admin'
+        status: "error",
+        message: "Failed to create admin",
       });
     }
   }
@@ -150,21 +245,20 @@ class AdminController {
     try {
       searchService.clearCache();
 
-      logger.info('Search cache cleared', { adminId: req.user.id });
+      logger.info("Search cache cleared", { adminId: req.user.id });
 
       res.status(200).json({
-        status: 'success',
-        message: 'Search cache cleared successfully'
+        status: "success",
+        message: "Search cache cleared successfully",
       });
-
     } catch (error) {
-      logger.error('AdminController.clearSearchCache error', { 
+      logger.error("AdminController.clearSearchCache error", {
         error: error.message,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to clear cache'
+        status: "error",
+        message: "Failed to clear cache",
       });
     }
   }
@@ -178,19 +272,18 @@ class AdminController {
       const cacheStats = searchService.getCacheStats();
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: cacheStats,
-        message: 'Cache statistics retrieved successfully'
+        message: "Cache statistics retrieved successfully",
       });
-
     } catch (error) {
-      logger.error('AdminController.getSearchCacheStats error', { 
+      logger.error("AdminController.getSearchCacheStats error", {
         error: error.message,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to get cache statistics'
+        status: "error",
+        message: "Failed to get cache statistics",
       });
     }
   }
@@ -205,28 +298,27 @@ class AdminController {
 
       if (!healthResult.success) {
         return res.status(500).json({
-          status: 'error',
-          message: 'Database health check failed'
+          status: "error",
+          message: "Database health check failed",
         });
       }
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: {
-          database: 'healthy',
-          timestamp: new Date().toISOString()
+          database: "healthy",
+          timestamp: new Date().toISOString(),
         },
-        message: 'Database health check passed'
+        message: "Database health check passed",
       });
-
     } catch (error) {
-      logger.error('AdminController.testDatabaseHealth error', { 
+      logger.error("AdminController.testDatabaseHealth error", {
         error: error.message,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
       res.status(500).json({
-        status: 'error',
-        message: 'Database health check failed'
+        status: "error",
+        message: "Database health check failed",
       });
     }
   }
@@ -243,23 +335,22 @@ class AdminController {
         uptime: Math.floor(process.uptime()),
         memory_usage: process.memoryUsage(),
         env: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         data: systemInfo,
-        message: 'System information retrieved successfully'
+        message: "System information retrieved successfully",
       });
-
     } catch (error) {
-      logger.error('AdminController.getSystemInfo error', { 
+      logger.error("AdminController.getSystemInfo error", {
         error: error.message,
-        adminId: req.user?.id
+        adminId: req.user?.id,
       });
       res.status(500).json({
-        status: 'error',
-        message: 'Failed to get system information'
+        status: "error",
+        message: "Failed to get system information",
       });
     }
   }

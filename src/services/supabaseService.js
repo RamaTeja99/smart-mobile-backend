@@ -1,5 +1,5 @@
-const { getSupabaseClient, getSupabaseAdmin } = require('../config/database');
-const logger = require('../utils/logger');
+const { getSupabaseClient, getSupabaseAdmin } = require("../config/database");
+const logger = require("../utils/logger");
 
 /**
  * Supabase Database Service
@@ -14,11 +14,11 @@ class SupabaseService {
     return await this.executeOperation(async () => {
       feedbackData.created_at = new Date().toISOString();
       return await this.client // can use adminClient if you want only admin access
-        .from('feedback')
+        .from("feedback")
         .insert([feedbackData])
         .select()
         .single();
-    }, 'createFeedback');
+    }, "createFeedback");
   }
 
   // Fetch all feedback (optionally paginated)
@@ -26,11 +26,47 @@ class SupabaseService {
     const offset = (page - 1) * limit;
     return await this.executeOperation(async () => {
       return await this.client
-        .from('feedback')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .from("feedback")
+        .select("*")
+        .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
-    }, 'getFeedbackList');
+    }, "getFeedbackList");
+  }
+  async getFeedbackById(id) {
+    return await this.executeOperation(async () => {
+      return await this.client
+        .from("feedback")
+        .select("*")
+        .eq("id", id)
+        .single();
+    }, "getFeedbackById");
+  }
+
+  /**
+   * Update feedback (Admin only)
+   */
+  async updateFeedback(id, updateData) {
+    return await this.executeOperation(async () => {
+      updateData.updated_at = new Date().toISOString();
+
+      return await this.adminClient
+        .from("feedback")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+    }, "updateFeedback");
+  }
+
+  //create api
+    
+  /**
+   * Delete feedback (Admin only)
+   */
+  async deleteFeedback(id) {
+    return await this.executeOperation(async () => {
+      return await this.adminClient.from("feedback").delete().eq("id", id);
+    }, "deleteFeedback");
   }
   /**
    * Execute database operation with error handling and logging
@@ -45,7 +81,7 @@ class SupabaseService {
       const result = await operation();
       const duration = Date.now() - startTime;
 
-      logger.logDatabaseOperation(operationName, 'unknown', duration, true);
+      logger.logDatabaseOperation(operationName, "unknown", duration, true);
 
       if (result.error) {
         throw new Error(result.error.message);
@@ -54,11 +90,17 @@ class SupabaseService {
       return {
         success: true,
         data: result.data,
-        count: result.count
+        count: result.count,
       };
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.logDatabaseOperation(operationName, 'unknown', duration, false, error);
+      logger.logDatabaseOperation(
+        operationName,
+        "unknown",
+        duration,
+        false,
+        error
+      );
 
       throw new Error(`Database operation failed: ${error.message}`);
     }
@@ -73,47 +115,47 @@ class SupabaseService {
    */
   async getProducts(filters = {}, pagination = {}) {
     const {
-      status = 'active',
+      status = "active",
       brand_id,
       category_id,
       is_featured,
       is_bestseller,
-      in_stock
+      in_stock,
     } = filters;
 
     const {
       page = 1,
       limit = 50,
-      sortBy = 'created_at',
-      sortOrder = 'desc'
+      sortBy = "created_at",
+      sortOrder = "desc",
     } = pagination;
 
     const offset = (page - 1) * limit;
 
     return await this.executeOperation(async () => {
-      let query = this.client
-        .from('products')
-        .select(`
+      let query = this.client.from("products").select(`
           *,
           brand:brands(*),
           category:categories(*)
         `);
 
       // Apply filters
-      if (status) query = query.eq('status', status);
-      if (brand_id) query = query.eq('brand_id', brand_id);
-      if (category_id) query = query.eq('category_id', category_id);
-      if (is_featured !== undefined) query = query.eq('is_featured', is_featured);
-      if (is_bestseller !== undefined) query = query.eq('is_bestseller', is_bestseller);
-      if (in_stock) query = query.gt('stock_quantity', 0);
+      if (status) query = query.eq("status", status);
+      if (brand_id) query = query.eq("brand_id", brand_id);
+      if (category_id) query = query.eq("category_id", category_id);
+      if (is_featured !== undefined)
+        query = query.eq("is_featured", is_featured);
+      if (is_bestseller !== undefined)
+        query = query.eq("is_bestseller", is_bestseller);
+      if (in_stock) query = query.gt("stock_quantity", 0);
 
       // Apply sorting and pagination
       query = query
-        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .order(sortBy, { ascending: sortOrder === "asc" })
         .range(offset, offset + limit - 1);
 
       return await query;
-    }, 'getProducts');
+    }, "getProducts");
   }
 
   /**
@@ -122,15 +164,17 @@ class SupabaseService {
   async getProductById(id) {
     return await this.executeOperation(async () => {
       return await this.client
-        .from('products')
-        .select(`
+        .from("products")
+        .select(
+          `
           *,
           brand:brands(*),
           category:categories(*)
-        `)
-        .eq('id', id)
+        `
+        )
+        .eq("id", id)
         .single();
-    }, 'getProductById');
+    }, "getProductById");
   }
 
   /**
@@ -148,11 +192,11 @@ class SupabaseService {
       productData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('products')
+        .from("products")
         .insert([productData])
         .select()
         .single();
-    }, 'createProduct');
+    }, "createProduct");
   }
 
   /**
@@ -163,12 +207,12 @@ class SupabaseService {
       updateData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('products')
+        .from("products")
         .update(updateData)
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
-    }, 'updateProduct');
+    }, "updateProduct");
   }
 
   /**
@@ -176,11 +220,8 @@ class SupabaseService {
    */
   async deleteProduct(id) {
     return await this.executeOperation(async () => {
-      return await this.adminClient
-        .from('products')
-        .delete()
-        .eq('id', id);
-    }, 'deleteProduct');
+      return await this.adminClient.from("products").delete().eq("id", id);
+    }, "deleteProduct");
   }
 
   /**
@@ -188,9 +229,7 @@ class SupabaseService {
    */
   async searchProducts(query, filters = {}) {
     return await this.executeOperation(async () => {
-      let dbQuery = this.client
-        .from('products')
-        .select(`
+      let dbQuery = this.client.from("products").select(`
           *,
           brand:brands(*),
           category:categories(*)
@@ -198,18 +237,18 @@ class SupabaseService {
 
       // Full-text search
       if (query) {
-        dbQuery = dbQuery.textSearch('fts', query);
+        dbQuery = dbQuery.textSearch("fts", query);
       }
 
       // Apply filters
-      if (filters.brand_id) dbQuery = dbQuery.eq('brand_id', filters.brand_id);
-      if (filters.category_id) dbQuery = dbQuery.eq('category_id', filters.category_id);
-      if (filters.status) dbQuery = dbQuery.eq('status', filters.status);
+      if (filters.brand_id) dbQuery = dbQuery.eq("brand_id", filters.brand_id);
+      if (filters.category_id)
+        dbQuery = dbQuery.eq("category_id", filters.category_id);
+      if (filters.status) dbQuery = dbQuery.eq("status", filters.status);
 
-      return await dbQuery.order('created_at', { ascending: false });
-    }, 'searchProducts');
+      return await dbQuery.order("created_at", { ascending: false });
+    }, "searchProducts");
   }
-  
 
   // ===============================
   // CATEGORY OPERATIONS
@@ -220,16 +259,14 @@ class SupabaseService {
    */
   async getCategories(includeInactive = false) {
     return await this.executeOperation(async () => {
-      let query = this.client
-        .from('categories')
-        .select('*');
+      let query = this.client.from("categories").select("*");
 
       if (!includeInactive) {
-        query = query.eq('is_active', true);
+        query = query.eq("is_active", true);
       }
 
-      return await query.order('sort_order', { ascending: true });
-    }, 'getCategories');
+      return await query.order("sort_order", { ascending: true });
+    }, "getCategories");
   }
 
   /**
@@ -238,11 +275,11 @@ class SupabaseService {
   async getCategoryById(id) {
     return await this.executeOperation(async () => {
       return await this.client
-        .from('categories')
-        .select('*')
-        .eq('id', id)
+        .from("categories")
+        .select("*")
+        .eq("id", id)
         .single();
-    }, 'getCategoryById');
+    }, "getCategoryById");
   }
 
   /**
@@ -258,11 +295,11 @@ class SupabaseService {
       categoryData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('categories')
+        .from("categories")
         .insert([categoryData])
         .select()
         .single();
-    }, 'createCategory');
+    }, "createCategory");
   }
 
   /**
@@ -273,12 +310,12 @@ class SupabaseService {
       updateData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('categories')
+        .from("categories")
         .update(updateData)
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
-    }, 'updateCategory');
+    }, "updateCategory");
   }
 
   /**
@@ -286,11 +323,8 @@ class SupabaseService {
    */
   async deleteCategory(id) {
     return await this.executeOperation(async () => {
-      return await this.adminClient
-        .from('categories')
-        .delete()
-        .eq('id', id);
-    }, 'deleteCategory');
+      return await this.adminClient.from("categories").delete().eq("id", id);
+    }, "deleteCategory");
   }
 
   // ===============================
@@ -302,16 +336,14 @@ class SupabaseService {
    */
   async getBrands(includeInactive = false) {
     return await this.executeOperation(async () => {
-      let query = this.client
-        .from('brands')
-        .select('*');
+      let query = this.client.from("brands").select("*");
 
       if (!includeInactive) {
-        query = query.eq('is_active', true);
+        query = query.eq("is_active", true);
       }
 
-      return await query.order('sort_order', { ascending: true });
-    }, 'getBrands');
+      return await query.order("sort_order", { ascending: true });
+    }, "getBrands");
   }
 
   /**
@@ -319,12 +351,8 @@ class SupabaseService {
    */
   async getBrandById(id) {
     return await this.executeOperation(async () => {
-      return await this.client
-        .from('brands')
-        .select('*')
-        .eq('id', id)
-        .single();
-    }, 'getBrandById');
+      return await this.client.from("brands").select("*").eq("id", id).single();
+    }, "getBrandById");
   }
 
   /**
@@ -340,11 +368,11 @@ class SupabaseService {
       brandData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('brands')
+        .from("brands")
         .insert([brandData])
         .select()
         .single();
-    }, 'createBrand');
+    }, "createBrand");
   }
 
   /**
@@ -355,12 +383,12 @@ class SupabaseService {
       updateData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('brands')
+        .from("brands")
         .update(updateData)
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
-    }, 'updateBrand');
+    }, "updateBrand");
   }
 
   /**
@@ -368,11 +396,8 @@ class SupabaseService {
    */
   async deleteBrand(id) {
     return await this.executeOperation(async () => {
-      return await this.adminClient
-        .from('brands')
-        .delete()
-        .eq('id', id);
-    }, 'deleteBrand');
+      return await this.adminClient.from("brands").delete().eq("id", id);
+    }, "deleteBrand");
   }
 
   // ===============================
@@ -385,11 +410,11 @@ class SupabaseService {
   async getAdminByEmail(email) {
     return await this.executeOperation(async () => {
       return await this.adminClient
-        .from('admins')
-        .select('*')
-        .eq('email', email)
+        .from("admins")
+        .select("*")
+        .eq("email", email)
         .single();
-    }, 'getAdminByEmail');
+    }, "getAdminByEmail");
   }
 
   /**
@@ -398,11 +423,11 @@ class SupabaseService {
   async getAdminById(id) {
     return await this.executeOperation(async () => {
       return await this.adminClient
-        .from('admins')
-        .select('*')
-        .eq('id', id)
+        .from("admins")
+        .select("*")
+        .eq("id", id)
         .single();
-    }, 'getAdminById');
+    }, "getAdminById");
   }
 
   /**
@@ -414,11 +439,11 @@ class SupabaseService {
       adminData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('admins')
+        .from("admins")
         .insert([adminData])
         .select()
         .single();
-    }, 'createAdmin');
+    }, "createAdmin");
   }
 
   /**
@@ -429,12 +454,12 @@ class SupabaseService {
       updateData.updated_at = new Date().toISOString();
 
       return await this.adminClient
-        .from('admins')
+        .from("admins")
         .update(updateData)
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
-    }, 'updateAdmin');
+    }, "updateAdmin");
   }
 
   /**
@@ -444,7 +469,7 @@ class SupabaseService {
     return await this.executeOperation(async () => {
       const updateData = {
         login_attempts: attempts,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       if (lockedUntil) {
@@ -452,10 +477,10 @@ class SupabaseService {
       }
 
       return await this.adminClient
-        .from('admins')
+        .from("admins")
         .update(updateData)
-        .eq('id', id);
-    }, 'updateAdminLoginAttempts');
+        .eq("id", id);
+    }, "updateAdminLoginAttempts");
   }
 
   /**
@@ -464,15 +489,15 @@ class SupabaseService {
   async resetAdminLoginAttempts(id) {
     return await this.executeOperation(async () => {
       return await this.adminClient
-        .from('admins')
+        .from("admins")
         .update({
           login_attempts: 0,
           locked_until: null,
           last_login_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', id);
-    }, 'resetAdminLoginAttempts');
+        .eq("id", id);
+    }, "resetAdminLoginAttempts");
   }
 
   // ===============================
@@ -486,9 +511,9 @@ class SupabaseService {
     return text
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, '') // Remove special characters
-      .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
-      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+      .replace(/[^\w\s-]/g, "") // Remove special characters
+      .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with hyphens
+      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
   }
 
   /**
@@ -497,19 +522,23 @@ class SupabaseService {
   async getStatistics() {
     return await this.executeOperation(async () => {
       const [products, categories, brands] = await Promise.all([
-        this.client.from('products').select('*', { count: 'exact', head: true }),
-        this.client.from('categories').select('*', { count: 'exact', head: true }),
-        this.client.from('brands').select('*', { count: 'exact', head: true })
+        this.client
+          .from("products")
+          .select("*", { count: "exact", head: true }),
+        this.client
+          .from("categories")
+          .select("*", { count: "exact", head: true }),
+        this.client.from("brands").select("*", { count: "exact", head: true }),
       ]);
 
       return {
         data: {
           total_products: products.count,
           total_categories: categories.count,
-          total_brands: brands.count
-        }
+          total_brands: brands.count,
+        },
       };
-    }, 'getStatistics');
+    }, "getStatistics");
   }
 
   /**
@@ -517,11 +546,8 @@ class SupabaseService {
    */
   async healthCheck() {
     return await this.executeOperation(async () => {
-      return await this.client
-        .from('health_check')
-        .select('*')
-        .limit(1);
-    }, 'healthCheck');
+      return await this.client.from("health_check").select("*").limit(1);
+    }, "healthCheck");
   }
 }
 
